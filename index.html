@@ -3,95 +3,163 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Rekap Kunjungan Pasien - Mei 2025</title>
+  <title>Rekap Kunjungan Pasien</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    .table-responsive {
-      overflow-x: auto;
-    }
+    .table-responsive { overflow-x: auto; }
     #tableHead th {
-      font-size: 0.75rem;
-      padding: 4px;
-      white-space: nowrap;
-      min-width: 45px;
-      max-width: 55px;
-      text-align: center;
-      vertical-align: middle;
+      font-size: 0.75rem; padding: 4px;
+      white-space: nowrap; min-width: 45px; max-width: 55px;
+      text-align: center; vertical-align: middle;
     }
     #dataBody td {
-      font-size: 0.8rem;
-      padding: 4px;
-      text-align: center;
-      vertical-align: middle;
+      font-size: 0.8rem; padding: 4px;
+      text-align: center; vertical-align: middle;
     }
     thead.table-dark th {
-      position: sticky;
-      top: 0;
-      z-index: 2;
+      position: sticky; top: 0; z-index: 2;
     }
   </style>
 </head>
 <body class="bg-light">
 
-  <div class="container my-5">
-    <h2 class="text-center mb-4">Rekap Kunjungan Pasien - Mei 2025</h2>
+<div class="container my-5">
+  <h2 class="text-center mb-4">Rekap Kunjungan Pasien</h2>
 
-    <!-- Loading -->
-    <div id="loading" class="text-center my-3">
-      <div class="spinner-border text-primary" role="status"></div>
-      <p class="mt-2">Memuat data...</p>
+  <!-- Pilihan Bulan -->
+  <div class="d-flex justify-content-center mb-3">
+    <select id="bulanSelect" class="form-select w-auto">
+      <option value="">-- Pilih Bulan --</option>
+      <option value="mei">Mei 2025</option>
+      <option value="juni">Juni 2025</option>
+      <option value="juli">Juli 2025</option>
+    </select>
+  </div>
+
+  <!-- Loading dengan Progress -->
+  <div id="loading" class="text-center my-3" style="display:none;">
+    <div class="progress" style="height: 25px;">
+      <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+           role="progressbar" style="width: 0%">0%</div>
+    </div>
+    <p class="mt-2">Memuat data...</p>
+  </div>
+
+  <!-- Konten -->
+  <div id="content" style="display:none;">
+    <div class="table-responsive">
+      <table class="table table-sm table-bordered table-striped table-hover align-middle text-center">
+        <thead class="table-dark" id="tableHead"></thead>
+        <tbody id="dataBody"></tbody>
+      </table>
     </div>
 
-    <!-- Konten -->
-    <div id="content" style="display:none;">
-      <div class="table-responsive">
-        <table class="table table-sm table-bordered table-striped table-hover align-middle text-center">
-          <thead class="table-dark" id="tableHead"></thead>
-          <tbody id="dataBody"></tbody>
-        </table>
-      </div>
-
-      <!-- Chart -->
-      <div class="card shadow-sm mt-4">
-        <div class="card-body">
-          <h5 class="card-title">Grafik Kunjungan Pasien</h5>
-          <canvas id="kunjunganChart" height="100"></canvas>
-        </div>
+    <!-- Chart -->
+    <div class="card shadow-sm mt-4">
+      <div class="card-body">
+        <h5 class="card-title">Grafik Kunjungan Pasien</h5>
+        <canvas id="kunjunganChart" height="100"></canvas>
       </div>
     </div>
+  </div>
+</div>
 
 <script>
-async function loadData() {
+let chartInstance = null;
+
+// Mapping bulan ke URL spreadsheet
+const dataSources = {
+  mei: "https://script.google.com/macros/s/AKfycbxe7zF8WcS3gtl3VA6v9WFgAcEaqfUBSKcQj2xb2DugkN1dfzSXVpZAeu_lbhwXzwmMMw/exec",
+  juni: "https://script.google.com/macros/s/XXXXX/exec",
+  juli: "https://script.google.com/macros/s/YYYYY/exec"
+};
+
+// Fungsi fetch dengan progress (real-time atau simulasi)
+async function fetchWithProgress(url, onProgress) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("Network response was not ok");
+
+  const contentLength = response.headers.get("Content-Length");
+  const total = contentLength ? parseInt(contentLength, 10) : 0;
+
+  const reader = response.body.getReader();
+  let loaded = 0;
+  const chunks = [];
+
+  // Kalau Content-Length tidak ada, buat progress simulasi naik ke 80%
+  let fakeInterval;
+  if (!total && onProgress) {
+    let fakeProgress = 0;
+    fakeInterval = setInterval(() => {
+      fakeProgress += 5;
+      if (fakeProgress < 85) {
+        onProgress(fakeProgress);
+      } else {
+        clearInterval(fakeInterval);
+      }
+    }, 200);
+  }
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    loaded += value.length;
+    if (total && onProgress) {
+      const percent = Math.min(90, Math.round((loaded / total) * 90));
+      onProgress(percent);
+    }
+  }
+
+  if (fakeInterval) clearInterval(fakeInterval);
+
+  // gabungkan chunks
+  const full = new Uint8Array(chunks.reduce((acc, val) => acc.concat(Array.from(val)), []));
+  return new TextDecoder("utf-8").decode(full);
+}
+
+async function loadData(url, bulanLabel) {
   try {
-    document.getElementById("loading").style.display = "block";
+    const loadingDiv = document.getElementById("loading");
+    const contentDiv = document.getElementById("content");
+    const bar = document.getElementById("progressBar");
 
-    const response = await fetch("https://script.google.com/macros/s/AKfycbxe7zF8WcS3gtl3VA6v9WFgAcEaqfUBSKcQj2xb2DugkN1dfzSXVpZAeu_lbhwXzwmMMw/exec");
-    const json = await response.json();
+    loadingDiv.style.display = "block";
+    contentDiv.style.display = "none";
+    bar.style.width = "0%";
+    bar.textContent = "0%";
 
+    const text = await fetchWithProgress(url, (percent) => {
+      bar.style.width = percent + "%";
+      bar.textContent = percent + "%";
+    });
+
+    // Parsing JSON (lanjutkan ke 95%)
+    bar.style.width = "95%";
+    bar.textContent = "95%";
+
+    const json = JSON.parse(text);
     const data = Array.isArray(json) ? json : (json.data || []);
 
-    const meiData = data.filter(item => {
+    const bulanIndex = { mei: 4, juni: 5, juli: 6 }[bulanLabel];
+    const filtered = data.filter(item => {
       const tgl = new Date(item.Tanggal);
-      return !isNaN(tgl) && tgl.getMonth() === 4 && tgl.getFullYear() === 2025;
+      return !isNaN(tgl) && tgl.getMonth() === bulanIndex && tgl.getFullYear() === 2025;
     });
 
     const dailyStats = {};
-    meiData.forEach(item => {
+    filtered.forEach(item => {
       const tgl = new Date(item.Tanggal);
       if (isNaN(tgl)) return;
-      const key = `${tgl.getDate()}-Mei`;
+      const key = `${tgl.getDate()}-${bulanLabel.charAt(0).toUpperCase() + bulanLabel.slice(1)}`;
       if (!dailyStats[key]) {
         dailyStats[key] = { total: 0, bpjs: 0, nonbpjs: 0 };
       }
       dailyStats[key].total++;
-      const rawBpjs = (item["No BPJS"] || "").toString().trim();
-      const noBpjs = rawBpjs.replace(/\D/g, "");
-      if (noBpjs !== "") {
-        dailyStats[key].bpjs++;
-      } else {
-        dailyStats[key].nonbpjs++;
-      }
+      const noBpjs = (item["No BPJS"] || "").replace(/\D/g, "");
+      if (noBpjs !== "") dailyStats[key].bpjs++;
+      else dailyStats[key].nonbpjs++;
     });
 
     const labels = Object.keys(dailyStats);
@@ -105,24 +173,15 @@ async function loadData() {
         ${labels.map(l => `<th>${l}</th>`).join("")}
       </tr>
     `;
-
     document.getElementById("dataBody").innerHTML = `
-      <tr>
-        <td>Total Pasien</td>
-        ${labels.map((l, i) => `<td>${totalPasien[i]}</td>`).join("")}
-      </tr>
-      <tr>
-        <td>Pasien BPJS</td>
-        ${labels.map((l, i) => `<td>${bpjsPasien[i]}</td>`).join("")}
-      </tr>
-      <tr>
-        <td>Pasien Non-BPJS</td>
-        ${labels.map((l, i) => `<td>${nonbpjsPasien[i]}</td>`).join("")}
-      </tr>
+      <tr><td>Total Pasien</td>${totalPasien.map(v => `<td>${v}</td>`).join("")}</tr>
+      <tr><td>Pasien BPJS</td>${bpjsPasien.map(v => `<td>${v}</td>`).join("")}</tr>
+      <tr><td>Pasien Non-BPJS</td>${nonbpjsPasien.map(v => `<td>${v}</td>`).join("")}</tr>
     `;
 
     const ctx = document.getElementById("kunjunganChart").getContext("2d");
-    new Chart(ctx, {
+    if (chartInstance) chartInstance.destroy();
+    chartInstance = new Chart(ctx, {
       type: "line",
       data: {
         labels,
@@ -134,21 +193,35 @@ async function loadData() {
       },
       options: {
         responsive: true,
-        plugins: { legend: { position: "top" }, title: { display: true, text: "Rekap Pasien Mei 2025" } },
+        plugins: { legend: { position: "top" }, title: { display: true, text: `Rekap Pasien ${bulanLabel} 2025` } },
         scales: { x: { ticks: { autoSkip: true, maxTicksLimit: 10 } } }
       }
     });
 
-    document.getElementById("content").style.display = "block";
+    contentDiv.style.display = "block";
+
+    // terakhir ke 100%
+    bar.style.width = "100%";
+    bar.textContent = "100%";
 
   } catch (error) {
     console.error("Fetch error:", error);
   } finally {
-    document.getElementById("loading").style.display = "none";
+    setTimeout(() => {
+      document.getElementById("loading").style.display = "none";
+    }, 800);
   }
 }
 
-loadData();
+// Event listener dropdown
+document.getElementById("bulanSelect").addEventListener("change", function () {
+  const bulan = this.value;
+  if (bulan && dataSources[bulan]) {
+    loadData(dataSources[bulan], bulan);
+  } else {
+    document.getElementById("content").style.display = "none";
+  }
+});
 </script>
 
 </body>
