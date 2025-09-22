@@ -95,7 +95,7 @@
         juni: "https://script.google.com/macros/s/AKfycbzGPPy_jX6iO24Rs-MIDNnqB4CsIf_mtv0aDrMgcFEFFbeTzHFVniF6-y2oCxzwfCiTQw/exec",
         juli: "https://script.google.com/macros/s/AKfycbwnKNPZGdfbi1NFjPMofqycsRcQznOv1Jt5vmq_ElIsjalKsTPdBIzpRd_U1e7udFdyTA/exec",
         Agustus:
-          "https://script.google.com/macros/s/AKfycbywglyELuI5eztnv5SigDnLela8ShvANFNWtjUmHmj9mGqURcoh59EsZa_6RStMGcknKg/exec",
+          "https://script.google.com/macros/s/AKfycbwaOqrJZAecyyZt_c6fw1EMAQ6OQKSwWPQJwLCJEwthck3XZROpZWEFG2Qx4X2MSTTYbw/exec",
       };
 
       // Fungsi fetch dengan progress (real-time atau simulasi)
@@ -167,7 +167,9 @@
           const json = JSON.parse(text);
           const data = Array.isArray(json) ? json : json.data || [];
 
-          const bulanIndex = { mei: 4, juni: 5, juli: 6 }[bulanLabel];
+          const bulanIndex = { mei: 4, juni: 5, juli: 6, Agustus: 7 }[
+            bulanLabel
+          ];
           const filtered = data.filter((item) => {
             const tgl = new Date(item.Tanggal);
             return (
