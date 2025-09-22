@@ -3,267 +3,249 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Rekap Kunjungan Pasien</title>
+    <title>Rekap Pasien</title>
+
+    <!-- Google Sign-In -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- Google Fonts -->
     <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap"
       rel="stylesheet"
     />
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Firebase SDK -->
-    <!-- <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js"></script> -->
 
     <style>
-      .table-responsive {
-        overflow-x: auto;
+      body {
+        margin: 0;
+        font-family: "Poppins", sans-serif;
+        color: #333;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #a8e063, #56ab2f);
+        background-size: 200% 200%;
+        animation: gradientFlow 10s ease infinite;
       }
-      #tableHead th {
-        font-size: 0.75rem;
-        padding: 4px;
-        white-space: nowrap;
-        min-width: 45px;
-        max-width: 55px;
-        text-align: center;
-        vertical-align: middle;
-      }
-      #dataBody td {
-        font-size: 0.8rem;
-        padding: 4px;
-        text-align: center;
-        vertical-align: middle;
-      }
-      thead.table-dark th {
-        position: sticky;
-        top: 0;
-        z-index: 2;
-      }
-    </style>
-  </head>
-  <body class="bg-light">
-    <div class="container my-5">
-      <a href="index2.html" class="btn btn-outline-primary shadow"
-        >Input Register Pasien</a
-      >
-      <h2 class="text-center mb-4">Rekap Kunjungan Pasien</h2>
-      
-      <!-- Pilihan Bulan -->
-      <div class="d-flex justify-content-center mb-3">
-        <select id="bulanSelect" class="form-select w-auto">
-          <option value="">-- Pilih Bulan --</option>
-          <option value="april">April 2025</option>
-          <option value="mei">Mei 2025</option>
-          <option value="juni">Juni 2025</option>
-          <option value="juli">Juli 2025</option>
-          <option value="agustus">Agustus 2025</option>
-          <option value="september">September 2025</option>
-          <option value="oktober">Oktober 2025</option>
-          <option value="november">November 2025</option>
-          <option value="desember">Desember 2025</option>
-        </select>
-      </div>
 
-      <!-- Loading dengan Progress -->
-      <div id="loading" class="text-center my-3" style="display: none">
-        <div class="progress" style="height: 25px">
-          <div
-            id="progressBar"
-            class="progress-bar progress-bar-striped progress-bar-animated"
-            role="progressbar"
-            style="width: 0%"
-          >
-            0%
-          </div>
-        </div>
-        <p class="mt-2">Memuat data...</p>
-      </div>
-
-      <!-- Konten -->
-      <div id="content" style="display: none">
-        <div class="table-responsive">
-          <table
-            class="table table-sm table-bordered table-striped table-hover align-middle text-center"
-          >
-            <thead class="table-dark" id="tableHead"></thead>
-            <tbody id="dataBody"></tbody>
-          </table>
-        </div>
-
-        <!-- Chart -->
-        <div class="card shadow-sm mt-4">
-          <div class="card-body">
-            <h5 class="card-title">Grafik Kunjungan Pasien</h5>
-            <canvas id="kunjunganChart" height="100"></canvas>
-          </div>
-        </div>
-      </div>
-    </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-      import {
-        getDatabase,
-        ref,
-        get,
-        child,
-      } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
-
-      let chartInstance = null;
-
-      // 🔹 Konfigurasi Firebase
-      const firebaseConfig = {
-        apiKey: "AIzaSyCrMmWyZOclX2ILNCmY6T9MBfNhRxaMGLU",
-        authDomain: "rekap-data-pasien.firebaseapp.com",
-        databaseURL:
-          "https://rekap-data-pasien-default-rtdb.asia-southeast1.firebasedatabase.app",
-        projectId: "rekap-data-pasien",
-        storageBucket: "rekap-data-pasien.firebasestorage.app",
-        messagingSenderId: "204017560449",
-        appId: "1:204017560449:web:534fd88744504074455680",
-      };
-
-      // 🔹 Inisialisasi Firebase
-      const app = initializeApp(firebaseConfig);
-      const db = getDatabase(app);
-
-      async function loadData(bulanLabel) {
-        try {
-          const loadingDiv = document.getElementById("loading");
-          const contentDiv = document.getElementById("content");
-          const bar = document.getElementById("progressBar");
-
-          loadingDiv.style.display = "block";
-          contentDiv.style.display = "none";
-          bar.style.width = "0%";
-          bar.textContent = "0%";
-
-          // 🔹 Ambil data dari Firebase
-          const dbRef = ref(db, `pasien/2025/${bulanLabel}`);
-          const snapshot = await get(dbRef);
-
-          bar.style.width = "70%";
-          bar.textContent = "70%";
-
-          if (!snapshot.exists()) {
-            console.warn("Data kosong untuk bulan:", bulanLabel);
-            document.getElementById("content").style.display = "none";
-            loadingDiv.style.display = "none";
-            return;
-          }
-
-          const rawData = snapshot.val();
-          const data = Object.values(rawData); // ubah object ke array
-
-          // 🔹 Hitung statistik harian
-          const dailyStats = {};
-          data.forEach((item) => {
-            const tgl = new Date(item.Tanggal);
-            if (isNaN(tgl)) return;
-            const key = `${tgl.getDate()}-${bulanLabel}`;
-            if (!dailyStats[key]) {
-              dailyStats[key] = { total: 0, bpjs: 0, nonbpjs: 0 };
-            }
-            dailyStats[key].total++;
-            const noBpjs = (item["No_BPJS"] || "").replace(/\D/g, "");
-            if (noBpjs !== "") dailyStats[key].bpjs++;
-            else dailyStats[key].nonbpjs++;
-          });
-
-          const labels = Object.keys(dailyStats);
-          const totalPasien = labels.map((l) => dailyStats[l].total);
-          const bpjsPasien = labels.map((l) => dailyStats[l].bpjs);
-          const nonbpjsPasien = labels.map((l) => dailyStats[l].nonbpjs);
-
-          // 🔹 Isi tabel
-          document.getElementById("tableHead").innerHTML = `
-            <tr>
-              <th>Keterangan</th>
-              ${labels.map((l) => `<th>${l}</th>`).join("")}
-            </tr>
-          `;
-          document.getElementById("dataBody").innerHTML = `
-            <tr><td>Total Pasien</td>${totalPasien
-              .map((v) => `<td>${v}</td>`)
-              .join("")}</tr>
-            <tr><td>Pasien BPJS</td>${bpjsPasien
-              .map((v) => `<td>${v}</td>`)
-              .join("")}</tr>
-            <tr><td>Pasien Non-BPJS</td>${nonbpjsPasien
-              .map((v) => `<td>${v}</td>`)
-              .join("")}</tr>
-          `;
-
-          // 🔹 Render Chart
-          const ctx = document
-            .getElementById("kunjunganChart")
-            .getContext("2d");
-          if (chartInstance) chartInstance.destroy();
-          chartInstance = new Chart(ctx, {
-            type: "line",
-            data: {
-              labels,
-              datasets: [
-                {
-                  label: "Total Pasien",
-                  data: totalPasien,
-                  borderColor: "blue",
-                  backgroundColor: "rgba(0,0,255,0.1)",
-                  fill: true,
-                  tension: 0.3,
-                },
-                {
-                  label: "Pasien BPJS",
-                  data: bpjsPasien,
-                  borderColor: "green",
-                  backgroundColor: "rgba(0,255,0,0.1)",
-                  fill: false,
-                  tension: 0.3,
-                },
-                {
-                  label: "Pasien Non-BPJS",
-                  data: nonbpjsPasien,
-                  borderColor: "red",
-                  backgroundColor: "rgba(255,0,0,0.1)",
-                  fill: false,
-                  tension: 0.3,
-                },
-              ],
-            },
-            options: {
-              responsive: true,
-              plugins: {
-                legend: { position: "top" },
-                title: {
-                  display: true,
-                  text: `Rekap Pasien ${bulanLabel} 2025`,
-                },
-              },
-              scales: { x: { ticks: { autoSkip: true, maxTicksLimit: 10 } } },
-            },
-          });
-
-          contentDiv.style.display = "block";
-          bar.style.width = "100%";
-          bar.textContent = "100%";
-        } catch (error) {
-          console.error("Firebase fetch error:", error);
-        } finally {
-          setTimeout(() => {
-            document.getElementById("loading").style.display = "none";
-          }, 800);
+      @keyframes gradientFlow {
+        0% {
+          background-position: 0% 50%;
+        }
+        50% {
+          background-position: 100% 50%;
+        }
+        100% {
+          background-position: 0% 50%;
         }
       }
 
-      // Event listener dropdown
-      document
-        .getElementById("bulanSelect")
-        .addEventListener("change", function () {
-          const bulan = this.value;
-          if (bulan) {
-            loadData(bulan);
-          } else {
+      #loginDiv {
+        background: rgba(255, 255, 255, 0.8);
+        border-radius: 20px;
+        padding: 40px 30px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        width: 95%;
+        max-width: 420px;
+        text-align: center;
+        backdrop-filter: blur(12px);
+      }
+
+      #loginDiv img.logo-pkm {
+        width: 140px;
+        margin-bottom: 15px;
+      }
+
+      h2 {
+        font-size: 1.4rem;
+        font-weight: 600;
+        margin-bottom: 25px;
+        color: #8e8e20;
+      }
+
+      .g-signin-container {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+      }
+
+      #content {
+        display: none;
+        width: 100vw;
+        height: 100vh;
+      }
+
+      iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+      }
+
+      #userInfo {
+        position: absolute;
+        top: 15px;
+        right: 20px;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 8px 14px;
+        border-radius: 12px;
+        font-size: 0.9rem;
+        color: #333;
+        z-index: 999;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      }
+
+      #logoutBtn {
+        background: #e53935;
+        color: #fff;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: 0.3s;
+      }
+
+      #logoutBtn:hover {
+        background: #c62828;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Halaman Login -->
+    <div id="loginDiv">
+      <img
+        class="logo-pkm"
+        src="https://puskesmastrenggalek.github.io/SIP/assets/pkm.png"
+        alt="Logo Puskesmas"
+      />
+      <h2>Login dengan Google<br />untuk mengakses Data Rekap Pasien</h2>
+
+      <div
+        id="g_id_onload"
+        data-client_id="159159886422-e3ccfmj01e46qc5rtmubk21fhe3ocjam.apps.googleusercontent.com"
+        data-callback="handleCredentialResponse"
+        data-auto_prompt="false"
+      ></div>
+      <div class="g-signin-container">
+        <div
+          class="g_id_signin"
+          data-type="standard"
+          data-shape="pill"
+          data-theme="outline"
+        ></div>
+      </div>
+    </div>
+
+    <!-- Halaman Konten -->
+    <div id="content">
+      <div id="userInfo">
+        <span id="userName"></span>
+        <button id="logoutBtn">Logout</button>
+      </div>
+      <iframe id="pageFrame" src=""></iframe>
+    </div>
+    <!-- "asmoro26@gmail.com", -->
+    <script>
+      const allowedEmails = [
+        "harapan.triple.x@gmail.com",
+        "pkmpkmtrenggalek@gmail.com",
+       
+        "baaltazard89@gmail.com",
+       
+        "marjiantomarjianto91@gmail.com",
+       
+      ];
+
+      function decodeJwtResponse(token) {
+        const base64Url = token.split(".")[1];
+        const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+        return JSON.parse(decodeURIComponent(escape(window.atob(base64))));
+      }
+
+      function showContent(data) {
+        document.getElementById("loginDiv").style.display = "none";
+        document.getElementById("content").style.display = "block";
+        document.getElementById(
+          "userName"
+        ).innerHTML = `👋 Halo, <strong>${data.name}</strong><br/><small>${data.email}</small>`;
+        document.getElementById("pageFrame").src = "home.html";
+      }
+
+      function handleCredentialResponse(response) {
+        const data = decodeJwtResponse(response.credential);
+        const email = data.email;
+
+        if (!allowedEmails.includes(email)) {
+          Swal.fire({
+            icon: "error",
+            title: "Akses Ditolak",
+            text: "Email kamu tidak diizinkan.",
+            confirmButtonColor: "#d33",
+          });
+          return;
+        }
+
+        sessionStorage.setItem("userCredential", JSON.stringify(data));
+        showContent(data);
+
+        Swal.fire({
+          icon: "success",
+          title: "Login Berhasil",
+          text: `Selamat datang, ${data.name}!`,
+          timer: 1800,
+          showConfirmButton: false,
+        });
+      }
+
+      function logout() {
+        Swal.fire({
+          title: "Yakin mau logout?",
+          icon: "warning",
+          showCancelButton: true,
+          confirmButtonText: "Logout",
+          cancelButtonText: "Batal",
+          confirmButtonColor: "#e53935",
+        }).then((result) => {
+          if (result.isConfirmed) {
+            sessionStorage.removeItem("userCredential");
             document.getElementById("content").style.display = "none";
+            document.getElementById("pageFrame").src = "";
+            document.getElementById("loginDiv").style.display = "block";
+
+            Swal.fire({
+              icon: "success",
+              title: "Logout berhasil",
+              timer: 1200,
+              showConfirmButton: false,
+            });
           }
         });
+      }
+
+      function checkSession() {
+        const savedData = sessionStorage.getItem("userCredential");
+        if (savedData) {
+          const data = JSON.parse(savedData);
+          if (allowedEmails.includes(data.email)) {
+            showContent(data);
+          } else {
+            sessionStorage.removeItem("userCredential");
+          }
+        }
+      }
+
+      window.onload = checkSession;
+
+      window.addEventListener("DOMContentLoaded", () => {
+        const logoutBtn = document.getElementById("logoutBtn");
+        if (logoutBtn) logoutBtn.addEventListener("click", logout);
+      });
     </script>
   </body>
 </html>
