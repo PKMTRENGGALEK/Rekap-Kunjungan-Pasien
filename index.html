@@ -9,6 +9,10 @@
       rel="stylesheet"
     />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Firebase SDK -->
+    <!-- <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js"></script> -->
+
     <style>
       .table-responsive {
         overflow-x: auto;
@@ -38,7 +42,9 @@
   <body class="bg-light">
     <div class="container my-5">
       <h2 class="text-center mb-4">Rekap Kunjungan Pasien</h2>
-
+      <a href="index2.html" class="btn btn-outline-primary shadow"
+        >Input Register</a
+      >
       <!-- Pilihan Bulan -->
       <div class="d-flex justify-content-center mb-3">
         <select id="bulanSelect" class="form-select w-auto">
@@ -46,7 +52,7 @@
           <option value="mei">Mei 2025</option>
           <option value="juni">Juni 2025</option>
           <option value="juli">Juli 2025</option>
-          <option value="Agustus">Agustus 2025</option>
+          <option value="agustus">Agustus 2025</option>
         </select>
       </div>
 
@@ -85,66 +91,35 @@
         </div>
       </div>
     </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+      import {
+        getDatabase,
+        ref,
+        get,
+        child,
+      } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
-    <script>
       let chartInstance = null;
 
-      // Mapping bulan ke URL spreadsheet
-      const dataSources = {
-        mei: "https://script.google.com/macros/s/AKfycbxe7zF8WcS3gtl3VA6v9WFgAcEaqfUBSKcQj2xb2DugkN1dfzSXVpZAeu_lbhwXzwmMMw/exec",
-        juni: "https://script.google.com/macros/s/AKfycbzGPPy_jX6iO24Rs-MIDNnqB4CsIf_mtv0aDrMgcFEFFbeTzHFVniF6-y2oCxzwfCiTQw/exec",
-        juli: "https://script.google.com/macros/s/AKfycbwnKNPZGdfbi1NFjPMofqycsRcQznOv1Jt5vmq_ElIsjalKsTPdBIzpRd_U1e7udFdyTA/exec",
-        Agustus:
-          "https://script.google.com/macros/s/AKfycbwaOqrJZAecyyZt_c6fw1EMAQ6OQKSwWPQJwLCJEwthck3XZROpZWEFG2Qx4X2MSTTYbw/exec",
+      // 🔹 Konfigurasi Firebase
+      const firebaseConfig = {
+        apiKey: "AIzaSyCrMmWyZOclX2ILNCmY6T9MBfNhRxaMGLU",
+        authDomain: "rekap-data-pasien.firebaseapp.com",
+        databaseURL:
+          "https://rekap-data-pasien-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "rekap-data-pasien",
+        storageBucket: "rekap-data-pasien.firebasestorage.app",
+        messagingSenderId: "204017560449",
+        appId: "1:204017560449:web:534fd88744504074455680",
       };
 
-      // Fungsi fetch dengan progress (real-time atau simulasi)
-      async function fetchWithProgress(url, onProgress) {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error("Network response was not ok");
+      // 🔹 Inisialisasi Firebase
+      const app = initializeApp(firebaseConfig);
+      const db = getDatabase(app);
 
-        const contentLength = response.headers.get("Content-Length");
-        const total = contentLength ? parseInt(contentLength, 10) : 0;
-
-        const reader = response.body.getReader();
-        let loaded = 0;
-        const chunks = [];
-
-        // Kalau Content-Length tidak ada, buat progress simulasi naik ke 80%
-        let fakeInterval;
-        if (!total && onProgress) {
-          let fakeProgress = 0;
-          fakeInterval = setInterval(() => {
-            fakeProgress += 5;
-            if (fakeProgress < 85) {
-              onProgress(fakeProgress);
-            } else {
-              clearInterval(fakeInterval);
-            }
-          }, 200);
-        }
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          chunks.push(value);
-          loaded += value.length;
-          if (total && onProgress) {
-            const percent = Math.min(90, Math.round((loaded / total) * 90));
-            onProgress(percent);
-          }
-        }
-
-        if (fakeInterval) clearInterval(fakeInterval);
-
-        // gabungkan chunks
-        const full = new Uint8Array(
-          chunks.reduce((acc, val) => acc.concat(Array.from(val)), [])
-        );
-        return new TextDecoder("utf-8").decode(full);
-      }
-
-      async function loadData(url, bulanLabel) {
+      async function loadData(bulanLabel) {
         try {
           const loadingDiv = document.getElementById("loading");
           const contentDiv = document.getElementById("content");
@@ -155,42 +130,34 @@
           bar.style.width = "0%";
           bar.textContent = "0%";
 
-          const text = await fetchWithProgress(url, (percent) => {
-            bar.style.width = percent + "%";
-            bar.textContent = percent + "%";
-          });
+          // 🔹 Ambil data dari Firebase
+          const dbRef = ref(db, `pasien/2025/${bulanLabel}`);
+          const snapshot = await get(dbRef);
 
-          // Parsing JSON (lanjutkan ke 95%)
-          bar.style.width = "95%";
-          bar.textContent = "95%";
+          bar.style.width = "70%";
+          bar.textContent = "70%";
 
-          const json = JSON.parse(text);
-          const data = Array.isArray(json) ? json : json.data || [];
+          if (!snapshot.exists()) {
+            console.warn("Data kosong untuk bulan:", bulanLabel);
+            document.getElementById("content").style.display = "none";
+            loadingDiv.style.display = "none";
+            return;
+          }
 
-          const bulanIndex = { mei: 4, juni: 5, juli: 6, Agustus: 7 }[
-            bulanLabel
-          ];
-          const filtered = data.filter((item) => {
-            const tgl = new Date(item.Tanggal);
-            return (
-              !isNaN(tgl) &&
-              tgl.getMonth() === bulanIndex &&
-              tgl.getFullYear() === 2025
-            );
-          });
+          const rawData = snapshot.val();
+          const data = Object.values(rawData); // ubah object ke array
 
+          // 🔹 Hitung statistik harian
           const dailyStats = {};
-          filtered.forEach((item) => {
+          data.forEach((item) => {
             const tgl = new Date(item.Tanggal);
             if (isNaN(tgl)) return;
-            const key = `${tgl.getDate()}-${
-              bulanLabel.charAt(0).toUpperCase() + bulanLabel.slice(1)
-            }`;
+            const key = `${tgl.getDate()}-${bulanLabel}`;
             if (!dailyStats[key]) {
               dailyStats[key] = { total: 0, bpjs: 0, nonbpjs: 0 };
             }
             dailyStats[key].total++;
-            const noBpjs = (item["No BPJS"] || "").replace(/\D/g, "");
+            const noBpjs = (item["No_BPJS"] || "").replace(/\D/g, "");
             if (noBpjs !== "") dailyStats[key].bpjs++;
             else dailyStats[key].nonbpjs++;
           });
@@ -200,24 +167,26 @@
           const bpjsPasien = labels.map((l) => dailyStats[l].bpjs);
           const nonbpjsPasien = labels.map((l) => dailyStats[l].nonbpjs);
 
+          // 🔹 Isi tabel
           document.getElementById("tableHead").innerHTML = `
-      <tr>
-        <th>Keterangan</th>
-        ${labels.map((l) => `<th>${l}</th>`).join("")}
-      </tr>
-    `;
+            <tr>
+              <th>Keterangan</th>
+              ${labels.map((l) => `<th>${l}</th>`).join("")}
+            </tr>
+          `;
           document.getElementById("dataBody").innerHTML = `
-      <tr><td>Total Pasien</td>${totalPasien
-        .map((v) => `<td>${v}</td>`)
-        .join("")}</tr>
-      <tr><td>Pasien BPJS</td>${bpjsPasien
-        .map((v) => `<td>${v}</td>`)
-        .join("")}</tr>
-      <tr><td>Pasien Non-BPJS</td>${nonbpjsPasien
-        .map((v) => `<td>${v}</td>`)
-        .join("")}</tr>
-    `;
+            <tr><td>Total Pasien</td>${totalPasien
+              .map((v) => `<td>${v}</td>`)
+              .join("")}</tr>
+            <tr><td>Pasien BPJS</td>${bpjsPasien
+              .map((v) => `<td>${v}</td>`)
+              .join("")}</tr>
+            <tr><td>Pasien Non-BPJS</td>${nonbpjsPasien
+              .map((v) => `<td>${v}</td>`)
+              .join("")}</tr>
+          `;
 
+          // 🔹 Render Chart
           const ctx = document
             .getElementById("kunjunganChart")
             .getContext("2d");
@@ -267,12 +236,10 @@
           });
 
           contentDiv.style.display = "block";
-
-          // terakhir ke 100%
           bar.style.width = "100%";
           bar.textContent = "100%";
         } catch (error) {
-          console.error("Fetch error:", error);
+          console.error("Firebase fetch error:", error);
         } finally {
           setTimeout(() => {
             document.getElementById("loading").style.display = "none";
@@ -285,8 +252,8 @@
         .getElementById("bulanSelect")
         .addEventListener("change", function () {
           const bulan = this.value;
-          if (bulan && dataSources[bulan]) {
-            loadData(dataSources[bulan], bulan);
+          if (bulan) {
+            loadData(bulan);
           } else {
             document.getElementById("content").style.display = "none";
           }
