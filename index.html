@@ -9,7 +9,6 @@
       rel="stylesheet"
     />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- <script src="auth.js"></script> -->
     <style>
       body {
         background: linear-gradient(135deg, #f8f8f8, #99a3c2);
@@ -66,10 +65,7 @@
   </head>
   <body>
     <div class="container my-5">
-      <a
-        href="tahunan.html"
-        class="btn btn-outline-danger  shadow mb-4 rounded"
-      >
+      <a href="tahunan.html" class="btn btn-outline-danger shadow mb-4 rounded">
         Rekap Register Tahunan
       </a>
 
@@ -149,13 +145,15 @@
             </div>
           </div>
 
-          <!-- Diagnosa terbanyak akan ditambahkan di sini -->
+          <!-- Diagnosa terbanyak -->
           <div id="diagnosaSection"></div>
         </div>
       </div>
       <footer class="text-center mt-4">
-      <small class="text-muted">PKM Trenggalek | <a href="register.html"> 2025</a></small>
-    </footer>
+        <small class="text-muted"
+          >PKM Trenggalek | <a href="register.html">2025</a></small
+        >
+      </footer>
     </div>
 
     <!-- Script Firebase -->
@@ -169,7 +167,6 @@
 
       let chartInstance = null;
 
-      // 🔹 Konfigurasi Firebase
       const firebaseConfig = {
         apiKey: "AIzaSyCrMmWyZOclX2ILNCmY6T9MBfNhRxaMGLU",
         authDomain: "rekap-data-pasien.firebaseapp.com",
@@ -184,6 +181,35 @@
       const app = initializeApp(firebaseConfig);
       const db = getDatabase(app);
 
+      // 🔹 Fungsi parsing tanggal (support serial Excel & string)
+      function parseTanggal(tgl) {
+        if (!tgl) return null;
+
+        // Excel serial number (misalnya 44928)
+        if (!isNaN(tgl) && Number(tgl) > 30000) {
+          return new Date((Number(tgl) - 25569) * 86400 * 1000);
+        }
+
+        // yyyy-mm-dd
+        if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(tgl)) {
+          return new Date(tgl);
+        }
+
+        // dd/mm/yyyy
+        if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(tgl)) {
+          const [d, m, y] = tgl.split("/").map(Number);
+          return new Date(y, m - 1, d);
+        }
+
+        // dd-mm-yyyy
+        if (/^\d{1,2}-\d{1,2}-\d{4}$/.test(tgl)) {
+          const [d, m, y] = tgl.split("-").map(Number);
+          return new Date(y, m - 1, d);
+        }
+
+        return null;
+      }
+
       // 🔹 Mapping ICD-10 sederhana
       const icdMapping = {
         A09: "Diare dan gastroenteritis",
@@ -196,8 +222,6 @@
         R50: "Demam tidak spesifik",
         K30: "Dispepsia",
         M54: "Nyeri punggung",
-
-        // Tambahan biar 10 besar kamu tidak kosong
         J00: "Nasofaringitis akut (common cold)",
         R51: "Sakit kepala",
         J02: "Faringitis akut",
@@ -252,13 +276,13 @@
           const rawData = snapshot.val();
           const data = Object.values(rawData);
 
-          // === Statistik Harian ===
           const dailyStats = {};
           const diagnosaStats = {};
 
           data.forEach((item) => {
-            const tgl = new Date(item.Tanggal);
-            if (!isNaN(tgl)) {
+            const tgl = parseTanggal(item.Tanggal);
+
+            if (tgl) {
               const key = `${tgl.getDate()}-${bulanLabel}`;
               if (!dailyStats[key]) {
                 dailyStats[key] = { total: 0, bpjs: 0, nonbpjs: 0 };
@@ -269,7 +293,6 @@
               else dailyStats[key].nonbpjs++;
             }
 
-            // === Statistik Diagnosa (kode ICD) ===
             for (let i = 1; i <= 5; i++) {
               const d = (item[`Diagnosa${i}`] || "").trim().toUpperCase();
               if (d && /^[A-Z]\d{1,3}[A-Z0-9]?$/.test(d)) {
@@ -283,7 +306,6 @@
           const bpjsPasien = labels.map((l) => dailyStats[l].bpjs);
           const nonbpjsPasien = labels.map((l) => dailyStats[l].nonbpjs);
 
-          // Isi tabel kunjungan
           document.getElementById("tableHead").innerHTML = `
             <tr>
               <th>Keterangan</th>
@@ -291,21 +313,12 @@
             </tr>
           `;
           document.getElementById("dataBody").innerHTML = `
-            <tr><td>Total Pasien</td>${totalPasien
-              .map((v) => `<td>${v}</td>`)
-              .join("")}</tr>
-            <tr><td>Pasien BPJS</td>${bpjsPasien
-              .map((v) => `<td>${v}</td>`)
-              .join("")}</tr>
-            <tr><td>Pasien Non-BPJS</td>${nonbpjsPasien
-              .map((v) => `<td>${v}</td>`)
-              .join("")}</tr>
+            <tr><td>Total Pasien</td>${totalPasien.map((v) => `<td>${v}</td>`).join("")}</tr>
+            <tr><td>Pasien BPJS</td>${bpjsPasien.map((v) => `<td>${v}</td>`).join("")}</tr>
+            <tr><td>Pasien Non-BPJS</td>${nonbpjsPasien.map((v) => `<td>${v}</td>`).join("")}</tr>
           `;
 
-          // Render Chart Kunjungan
-          const ctx = document
-            .getElementById("kunjunganChart")
-            .getContext("2d");
+          const ctx = document.getElementById("kunjunganChart").getContext("2d");
           if (chartInstance) chartInstance.destroy();
           chartInstance = new Chart(ctx, {
             type: "line",
@@ -345,16 +358,12 @@
               responsive: true,
               plugins: {
                 legend: { position: "top" },
-                title: {
-                  display: true,
-                  text: `Rekap Pasien ${bulanLabel} ${tahun}`,
-                },
+                title: { display: true, text: `Rekap Pasien ${bulanLabel} ${tahun}` },
               },
               scales: { x: { ticks: { autoSkip: true, maxTicksLimit: 10 } } },
             },
           });
 
-          // === Diagnosa Terbanyak ===
           const topDiagnosa = Object.entries(diagnosaStats)
             .sort((a, b) => b[1] - a[1])
             .slice(0, 10);
@@ -372,9 +381,7 @@
                       ${topDiagnosa
                         .map(
                           ([code, count]) =>
-                            `<tr><td>${code}</td><td>${
-                              icdMapping[code] || "-"
-                            }</td><td>${count}</td></tr>`
+                            `<tr><td>${code}</td><td>${icdMapping[code] || "-"}</td><td>${count}</td></tr>`
                         )
                         .join("")}
                     </tbody>
@@ -386,10 +393,7 @@
           `;
           document.getElementById("diagnosaSection").innerHTML = diagnosaTable;
 
-          // Chart Bar Diagnosa
-          const diagCtx = document
-            .getElementById("diagnosaChart")
-            .getContext("2d");
+          const diagCtx = document.getElementById("diagnosaChart").getContext("2d");
           new Chart(diagCtx, {
             type: "bar",
             data: {
@@ -424,7 +428,6 @@
         }
       }
 
-      // 🔹 Event
       document.getElementById("tahunSelect").addEventListener("change", (e) => {
         const tahun = e.target.value;
         if (tahun) {
