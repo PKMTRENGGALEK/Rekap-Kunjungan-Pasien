@@ -10,105 +10,158 @@
     />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="auth.js"></script>
-    <!-- Firebase SDK -->
-    <!-- <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js"></script> -->
-
     <style>
+      body {
+        background: linear-gradient(135deg, #f8f8f8, #f5deda);
+        min-height: 100vh;
+      }
+      .card {
+        border-radius: 20px;
+        border: none;
+      }
+      .header-title {
+        background: linear-gradient(90deg, #175c06, #60812a);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 800;
+      }
+      .form-select {
+        border-radius: 12px;
+      }
+      .form-select:disabled {
+        background-color: #f3f4f6;
+        color: #9ca3af;
+        cursor: not-allowed;
+      }
       .table-responsive {
         overflow-x: auto;
       }
       #tableHead th {
-        font-size: 0.75rem;
-        padding: 4px;
+        font-size: 0.8rem;
+        padding: 6px;
         white-space: nowrap;
-        min-width: 45px;
-        max-width: 55px;
         text-align: center;
-        vertical-align: middle;
       }
       #dataBody td {
-        font-size: 0.8rem;
-        padding: 4px;
+        font-size: 0.85rem;
+        padding: 6px;
         text-align: center;
-        vertical-align: middle;
       }
       thead.table-dark th {
         position: sticky;
         top: 0;
         z-index: 2;
       }
+      .progress {
+        border-radius: 20px;
+        overflow: hidden;
+      }
+      .progress-bar {
+        font-weight: bold;
+      }
+      .shadow-soft {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      }
     </style>
   </head>
-  <body class="bg-light">
+  <body>
     <div class="container my-5">
-      <a href="index2.html" class="btn btn-outline-primary shadow"
-        >Input Register Pasien</a
+      <a
+        href="index2.html"
+        class="btn btn-outline-danger btn-sm shadow mb-4 rounded"
       >
-      <h2 class="text-center mb-4">Rekap Kunjungan Pasien</h2>
-      
-      <!-- Pilihan Bulan -->
-      <div class="d-flex justify-content-center mb-3">
-        <select id="bulanSelect" class="form-select w-auto">
-          <option value="">-- Pilih Bulan --</option>
-          <option value="januari">Januari 2025</option>
-          <option value="februari">Februari 2025</option>
-          <option value="maret">Maret 2025</option>
-          <option value="april">April 2025</option>
-          <option value="mei">Mei 2025</option>
-          <option value="juni">Juni 2025</option>
-          <option value="juli">Juli 2025</option>
-          <option value="agustus">Agustus 2025</option>
-          <option value="september">September 2025</option>
-          <option value="oktober">Oktober 2025</option>
-          <option value="november">November 2025</option>
-          <option value="desember">Desember 2025</option>
-        </select>
-      </div>
+        ➕ Input Register Pasien
+      </a>
 
-      <!-- Loading dengan Progress -->
-      <div id="loading" class="text-center my-3" style="display: none">
-        <div class="progress" style="height: 25px">
-          <div
-            id="progressBar"
-            class="progress-bar progress-bar-striped progress-bar-animated"
-            role="progressbar"
-            style="width: 0%"
-          >
-            0%
+      <div class="card shadow-soft p-4">
+        <h2 class="text-center mb-4 header-title fw-bold">
+          Rekap Kunjungan Pasien
+        </h2>
+
+        <!-- Pilihan Tahun & Bulan -->
+        <div class="row g-3 justify-content-center mb-4">
+          <div class="col-auto">
+            <div class="input-group shadow-sm">
+              <span class="input-group-text bg-light">📅 Tahun</span>
+              <select id="tahunSelect" class="form-select">
+                <option value="">-- Pilih Tahun --</option>
+                <option value="2023">2023</option>
+                <option value="2024">2024</option>
+                <option value="2025">2025</option>
+              </select>
+            </div>
+          </div>
+          <div class="col-auto">
+            <div class="input-group shadow-sm">
+              <span class="input-group-text bg-light">🗓️ Bulan</span>
+              <select id="bulanSelect" class="form-select">
+                <option value="">-- Pilih Bulan --</option>
+                <option value="januari">Januari</option>
+                <option value="februari">Februari</option>
+                <option value="maret">Maret</option>
+                <option value="april">April</option>
+                <option value="mei">Mei</option>
+                <option value="juni">Juni</option>
+                <option value="juli">Juli</option>
+                <option value="agustus">Agustus</option>
+                <option value="september">September</option>
+                <option value="oktober">Oktober</option>
+                <option value="november">November</option>
+                <option value="desember">Desember</option>
+              </select>
+            </div>
           </div>
         </div>
-        <p class="mt-2">Memuat data...</p>
-      </div>
 
-      <!-- Konten -->
-      <div id="content" style="display: none">
-        <div class="table-responsive">
-          <table
-            class="table table-sm table-bordered table-striped table-hover align-middle text-center"
-          >
-            <thead class="table-dark" id="tableHead"></thead>
-            <tbody id="dataBody"></tbody>
-          </table>
+        <!-- Loading -->
+        <div id="loading" class="text-center my-3" style="display: none">
+          <div class="progress" style="height: 28px">
+            <div
+              id="progressBar"
+              class="progress-bar progress-bar-striped progress-bar-animated bg-info"
+              role="progressbar"
+              style="width: 0%"
+            >
+              0%
+            </div>
+          </div>
+          <p class="mt-2 text-muted">⏳ Memuat data...</p>
         </div>
 
-        <!-- Chart -->
-        <div class="card shadow-sm mt-4">
-          <div class="card-body">
-            <h5 class="card-title">Grafik Kunjungan Pasien</h5>
-            <canvas id="kunjunganChart" height="100"></canvas>
+        <!-- Konten -->
+        <div id="content" style="display: none">
+          <div class="table-responsive shadow-sm rounded">
+            <table
+              class="table table-sm table-bordered table-striped table-hover align-middle text-center"
+            >
+              <thead class="table-dark" id="tableHead"></thead>
+              <tbody id="dataBody"></tbody>
+            </table>
+          </div>
+
+          <!-- Chart -->
+          <div class="card shadow-soft mt-4">
+            <div class="card-body">
+              <h5 class="card-title fw-bold text-primary">
+                📈 Grafik Kunjungan Pasien
+              </h5>
+              <canvas id="kunjunganChart" height="120"></canvas>
+            </div>
           </div>
         </div>
       </div>
+      <footer class="text-center fixed-bottom">
+        <small class="text-muted">PKM Trenggalek | 2025</small>
+      </footer>
     </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <!-- Script Firebase -->
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
       import {
         getDatabase,
         ref,
         get,
-        child,
       } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
       let chartInstance = null;
@@ -125,11 +178,30 @@
         appId: "1:204017560449:web:534fd88744504074455680",
       };
 
-      // 🔹 Inisialisasi Firebase
       const app = initializeApp(firebaseConfig);
       const db = getDatabase(app);
 
-      async function loadData(bulanLabel) {
+      // 🔹 Cek bulan aktif
+      async function updateBulanOptions(tahun) {
+        const bulanSelect = document.getElementById("bulanSelect");
+        const bulanList = bulanSelect.querySelectorAll("option[value]");
+
+        for (const opt of bulanList) {
+          if (opt.value === "") continue;
+          const dbRef = ref(db, `pasien/${tahun}/${opt.value}`);
+          const snapshot = await get(dbRef);
+          if (!snapshot.exists()) {
+            opt.disabled = true;
+            opt.textContent = opt.textContent.replace(" ❌", "") + " ❌";
+          } else {
+            opt.disabled = false;
+            opt.textContent = opt.textContent.replace(" ❌", "");
+          }
+        }
+      }
+
+      // 🔹 Load data
+      async function loadData(tahun, bulanLabel) {
         try {
           const loadingDiv = document.getElementById("loading");
           const contentDiv = document.getElementById("content");
@@ -140,24 +212,22 @@
           bar.style.width = "0%";
           bar.textContent = "0%";
 
-          // 🔹 Ambil data dari Firebase
-          const dbRef = ref(db, `pasien/2025/${bulanLabel}`);
+          const dbRef = ref(db, `pasien/${tahun}/${bulanLabel}`);
           const snapshot = await get(dbRef);
 
           bar.style.width = "70%";
           bar.textContent = "70%";
 
           if (!snapshot.exists()) {
-            console.warn("Data kosong untuk bulan:", bulanLabel);
-            document.getElementById("content").style.display = "none";
+            contentDiv.style.display = "none";
             loadingDiv.style.display = "none";
             return;
           }
 
           const rawData = snapshot.val();
-          const data = Object.values(rawData); // ubah object ke array
+          const data = Object.values(rawData);
 
-          // 🔹 Hitung statistik harian
+          // Hitung statistik
           const dailyStats = {};
           data.forEach((item) => {
             const tgl = new Date(item.Tanggal);
@@ -177,7 +247,7 @@
           const bpjsPasien = labels.map((l) => dailyStats[l].bpjs);
           const nonbpjsPasien = labels.map((l) => dailyStats[l].nonbpjs);
 
-          // 🔹 Isi tabel
+          // Isi tabel
           document.getElementById("tableHead").innerHTML = `
             <tr>
               <th>Keterangan</th>
@@ -196,7 +266,7 @@
               .join("")}</tr>
           `;
 
-          // 🔹 Render Chart
+          // Render Chart
           const ctx = document
             .getElementById("kunjunganChart")
             .getContext("2d");
@@ -209,26 +279,29 @@
                 {
                   label: "Total Pasien",
                   data: totalPasien,
-                  borderColor: "blue",
-                  backgroundColor: "rgba(0,0,255,0.1)",
+                  borderColor: "#2563eb",
+                  backgroundColor: "rgba(37,99,235,0.15)",
                   fill: true,
-                  tension: 0.3,
+                  tension: 0.4,
+                  pointBackgroundColor: "#2563eb",
                 },
                 {
                   label: "Pasien BPJS",
                   data: bpjsPasien,
-                  borderColor: "green",
-                  backgroundColor: "rgba(0,255,0,0.1)",
+                  borderColor: "#16a34a",
+                  backgroundColor: "rgba(22,163,74,0.1)",
                   fill: false,
-                  tension: 0.3,
+                  tension: 0.4,
+                  pointBackgroundColor: "#16a34a",
                 },
                 {
                   label: "Pasien Non-BPJS",
                   data: nonbpjsPasien,
-                  borderColor: "red",
-                  backgroundColor: "rgba(255,0,0,0.1)",
+                  borderColor: "#dc2626",
+                  backgroundColor: "rgba(220,38,38,0.1)",
                   fill: false,
-                  tension: 0.3,
+                  tension: 0.4,
+                  pointBackgroundColor: "#dc2626",
                 },
               ],
             },
@@ -238,7 +311,7 @@
                 legend: { position: "top" },
                 title: {
                   display: true,
-                  text: `Rekap Pasien ${bulanLabel} 2025`,
+                  text: `Rekap Pasien ${bulanLabel} ${tahun}`,
                 },
               },
               scales: { x: { ticks: { autoSkip: true, maxTicksLimit: 10 } } },
@@ -257,17 +330,25 @@
         }
       }
 
-      // Event listener dropdown
-      document
-        .getElementById("bulanSelect")
-        .addEventListener("change", function () {
-          const bulan = this.value;
-          if (bulan) {
-            loadData(bulan);
-          } else {
-            document.getElementById("content").style.display = "none";
-          }
-        });
+      // 🔹 Event
+      document.getElementById("tahunSelect").addEventListener("change", (e) => {
+        const tahun = e.target.value;
+        if (tahun) {
+          updateBulanOptions(tahun);
+          document.getElementById("bulanSelect").value = "";
+          document.getElementById("content").style.display = "none";
+        }
+      });
+
+      document.getElementById("bulanSelect").addEventListener("change", (e) => {
+        const bulan = e.target.value;
+        const tahun = document.getElementById("tahunSelect").value;
+        if (bulan && tahun) {
+          loadData(tahun, bulan);
+        } else {
+          document.getElementById("content").style.display = "none";
+        }
+      });
     </script>
   </body>
 </html>

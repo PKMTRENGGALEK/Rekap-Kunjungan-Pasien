@@ -22,13 +22,13 @@
         margin: 0;
         font-family: "Poppins", sans-serif;
         color: #333;
-        height: 100vh;
+        min-height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(135deg, #a8e063, #56ab2f);
+        background: linear-gradient(135deg, #63aee0, #0d4c5f);
         background-size: 200% 200%;
-        animation: gradientFlow 10s ease infinite;
+        animation: gradientFlow 12s ease infinite;
       }
 
       @keyframes gradientFlow {
@@ -44,26 +44,32 @@
       }
 
       #loginDiv {
-        background: rgba(255, 255, 255, 0.8);
+        background: rgba(255, 255, 255, 0.9);
         border-radius: 20px;
         padding: 40px 30px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
         width: 95%;
-        max-width: 420px;
+        max-width: 350px;
         text-align: center;
-        backdrop-filter: blur(12px);
+        backdrop-filter: blur(10px);
+        transition: transform 0.4s ease, opacity 0.4s ease;
+      }
+
+      #loginDiv.hide {
+        transform: scale(0.9);
+        opacity: 0;
       }
 
       #loginDiv img.logo-pkm {
-        width: 140px;
-        margin-bottom: 15px;
+        width: 80px;
+        /* margin-bottom: 2px; */
       }
 
       h2 {
-        font-size: 1.4rem;
+        font-size: 1.5rem;
         font-weight: 600;
         margin-bottom: 25px;
-        color: #8e8e20;
+        color: #4b6f2f;
       }
 
       .g-signin-container {
@@ -88,24 +94,29 @@
         position: absolute;
         top: 15px;
         right: 20px;
-        background: rgba(255, 255, 255, 0.9);
-        padding: 8px 14px;
-        border-radius: 12px;
-        font-size: 0.9rem;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 10px 16px;
+        border-radius: 14px;
+        font-size: 0.95rem;
         color: #333;
         z-index: 999;
         display: flex;
         align-items: center;
-        gap: 10px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        gap: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transition: transform 0.3s;
+      }
+
+      #userInfo:hover {
+        transform: translateY(-2px);
       }
 
       #logoutBtn {
         background: #e53935;
         color: #fff;
         border: none;
-        padding: 6px 12px;
-        border-radius: 6px;
+        padding: 6px 14px;
+        border-radius: 8px;
         cursor: pointer;
         font-size: 0.85rem;
         transition: 0.3s;
@@ -113,6 +124,12 @@
 
       #logoutBtn:hover {
         background: #c62828;
+      }
+
+      /* Responsive Google button */
+      .g_id_signin {
+        width: 100% !important;
+        max-width: 250px;
       }
     </style>
   </head>
@@ -124,7 +141,7 @@
         src="https://puskesmastrenggalek.github.io/SIP/assets/pkm.png"
         alt="Logo Puskesmas"
       />
-      <h2>Login dengan Google<br />untuk mengakses Data Rekap Pasien</h2>
+      <h3>Login Rekap Pasien</h3>
 
       <div
         id="g_id_onload"
@@ -150,16 +167,13 @@
       </div>
       <iframe id="pageFrame" src=""></iframe>
     </div>
-    <!-- "asmoro26@gmail.com", -->
+
     <script>
       const allowedEmails = [
         "harapan.triple.x@gmail.com",
         "pkmpkmtrenggalek@gmail.com",
-       
         "baaltazard89@gmail.com",
-       
         "marjiantomarjianto91@gmail.com",
-       
       ];
 
       function decodeJwtResponse(token) {
@@ -169,7 +183,10 @@
       }
 
       function showContent(data) {
-        document.getElementById("loginDiv").style.display = "none";
+        const loginDiv = document.getElementById("loginDiv");
+        loginDiv.classList.add("hide");
+        setTimeout(() => (loginDiv.style.display = "none"), 400);
+
         document.getElementById("content").style.display = "block";
         document.getElementById(
           "userName"
@@ -217,6 +234,7 @@
             document.getElementById("content").style.display = "none";
             document.getElementById("pageFrame").src = "";
             document.getElementById("loginDiv").style.display = "block";
+            document.getElementById("loginDiv").classList.remove("hide");
 
             Swal.fire({
               icon: "success",

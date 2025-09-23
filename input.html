@@ -18,6 +18,7 @@
       .card {
         max-width: 960px;
         margin: 0 auto 32px;
+        border-radius: 16px;
       }
       pre {
         max-height: 200px;
@@ -25,23 +26,38 @@
         background: #0f172a;
         color: #e6eef8;
         padding: 10px;
+        border-radius: 8px;
+      }
+      .table-hover tbody tr:hover {
+        background-color: #f1f5f9;
+      }
+      .progress {
+        border-radius: 16px;
+        height: 28px;
+      }
+      .shadow-soft {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      }
+      .filter-year {
+        max-width: 150px;
       }
     </style>
   </head>
   <body>
-    <div class="container"> <a href="index.html" class="btn btn-outline-primary shadow mb-4">
-          Home
-        </a></div>
-    <div class="card shadow-sm">
+    <div class="container">
+      <a href="home.html" class="btn btn-outline-primary shadow mb-4"> Home </a>
+    </div>
+
+    <!-- Upload Card -->
+    <div class="card shadow-soft mb-4">
       <div class="card-body">
         <h4 class="card-title mb-3">
           Import Excel → Firebase Realtime Database
         </h4>
-       
 
         <!-- Pilihan Tahun & Bulan -->
-        <div class="mb-3 row gx-2">
-          <label class="col-auto col-form-label">Pilih Tahun</label>
+        <div class="mb-3 row gx-2 align-items-center">
+          <label class="col-auto col-form-label">Tahun</label>
           <div class="col-auto">
             <select id="tahunSelect" class="form-select">
               <option value="2025" selected>2025</option>
@@ -50,7 +66,7 @@
             </select>
           </div>
 
-          <label class="col-auto col-form-label">Pilih Bulan</label>
+          <label class="col-auto col-form-label">Bulan</label>
           <div class="col-auto">
             <select id="bulanSelect" class="form-select">
               <option value="januari">Januari</option>
@@ -81,7 +97,7 @@
         </div>
 
         <!-- Tombol -->
-        <div class="mb-3 d-flex gap-2">
+        <div class="mb-3 d-flex gap-2 flex-wrap">
           <button id="previewBtn" class="btn btn-outline-primary">
             Preview File
           </button>
@@ -89,6 +105,9 @@
             Upload ke Firebase
           </button>
           <button id="clearLogBtn" class="btn btn-light">Clear Log</button>
+          <a href="contoh_pasien.xlsx" class="btn btn-outline-secondary"
+            >Download Template</a
+          >
         </div>
 
         <!-- Progress -->
@@ -111,21 +130,24 @@
           <label class="form-label">Log</label>
           <pre id="logBox">Menunggu file...</pre>
         </div>
-        <div class="mb-3">
-          <a href="contoh_pasien.xlsx" class="btn btn-outline-secondary shadow"
-            >Download Template</a
-          >
-        </div>
       </div>
     </div>
 
-    <!-- Rekap Data -->
-    <div class="card shadow-sm">
+    <!-- Rekap Card -->
+    <div class="card shadow-soft">
       <div class="card-body">
-        <h4 class="card-title mb-3">Rekap Data Pasien per Bulan</h4>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h4 class="card-title">Rekap Data Pasien</h4>
+          <select id="filterTahun" class="form-select filter-year">
+            <option value="2025" selected>2025</option>
+            <option value="2024">2024</option>
+            <option value="2023">2023</option>
+          </select>
+        </div>
+
         <div class="table-responsive">
           <table
-            class="table table-bordered table-striped text-center align-middle"
+            class="table table-bordered table-striped table-hover text-center align-middle"
           >
             <thead class="table-dark">
               <tr>
@@ -139,8 +161,9 @@
         </div>
       </div>
     </div>
-
-    <!-- Firebase + logic -->
+    <footer class="text-center">
+      <small class="text-muted">PKM Trenggalek | 2025</small>
+    </footer>
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
       import {
@@ -166,81 +189,6 @@
       const app = initializeApp(firebaseConfig);
       const db = getDatabase(app);
 
-      // -------------------------
-      // Helper konversi tanggal Excel serial number
-      // -------------------------
-      function excelDateToJSDate(serial) {
-        const utc_days = Math.floor(serial - 25569);
-        const utc_value = utc_days * 86400;
-        const date_info = new Date(utc_value * 1000);
-        const year = date_info.getUTCFullYear();
-        const month = String(date_info.getUTCMonth() + 1).padStart(2, "0");
-        const day = String(date_info.getUTCDate()).padStart(2, "0");
-        return `${year}-${month}-${day}`;
-      }
-
-      function normalizeDate(val) {
-        if (!val) return "";
-        if (val instanceof Date) {
-          return val.toISOString().split("T")[0];
-        }
-        if (typeof val === "number") {
-          return excelDateToJSDate(val);
-        }
-        if (typeof val === "string") {
-          let parts = val.split(/[\/\-]/);
-          if (parts.length === 3) {
-            let d, m, y;
-            if (val.includes("/")) {
-              d = parts[0];
-              m = parts[1];
-              y = parts[2];
-            } else {
-              y = parts[0];
-              m = parts[1];
-              d = parts[2];
-            }
-            if (y.length === 2) y = "20" + y;
-            if (d.length === 1) d = "0" + d;
-            if (m.length === 1) m = "0" + m;
-            return `${y}-${m}-${d}`;
-          }
-        }
-        return String(val).trim();
-      }
-
-      // -------------------------
-      // Sanitize Header & Row
-      // -------------------------
-      function sanitizeKey(key) {
-        if (key === null || key === undefined) return null;
-        const trimmed = String(key).trim();
-        if (!trimmed) return null;
-        let k = trimmed.replace(/\s+/g, "_").replace(/\//g, "_");
-        k = k.replace(/[$#\[\]\.\/]/g, "");
-        return k === "" ? null : k;
-      }
-
-      function sanitizeRow(row) {
-        const newRow = {};
-        for (const rawKey in row) {
-          const newKey = sanitizeKey(rawKey);
-          if (!newKey) continue;
-          let val = row[rawKey];
-
-          // jika kolom ada kata "tanggal" → normalisasi
-          if (newKey.toLowerCase().includes("tanggal")) {
-            val = normalizeDate(val);
-          }
-
-          newRow[newKey] = val;
-        }
-        return newRow;
-      }
-
-      // -------------------------
-      // Log Helper
-      // -------------------------
       const logBox = document.getElementById("logBox");
       function log(...args) {
         const t = new Date().toLocaleTimeString();
@@ -251,7 +199,7 @@
       }
 
       // -------------------------
-      // Parse Excel
+      // Upload Excel → Firebase
       // -------------------------
       let lastParsedRows = null;
       document
@@ -288,18 +236,13 @@
         });
       }
 
-      // -------------------------
-      // Upload Excel → Firebase
-      // -------------------------
       document
         .getElementById("uploadBtn")
         .addEventListener("click", async () => {
           const f = document.getElementById("fileInput").files[0];
           if (!f) return alert("Pilih file terlebih dahulu.");
-
-          const tahun = document.getElementById("tahunSelect").value || "2025";
-          const bulan = document.getElementById("bulanSelect").value || "mei";
-
+          const tahun = document.getElementById("tahunSelect").value;
+          const bulan = document.getElementById("bulanSelect").value;
           let rows;
           try {
             rows = lastParsedRows ? lastParsedRows : await parseExcelFile(f);
@@ -308,7 +251,6 @@
             return;
           }
           if (!rows.length) return alert("File kosong");
-
           const sanitized = rows
             .map((r) => sanitizeRow(r))
             .filter((r) => Object.keys(r).length > 0);
@@ -316,36 +258,53 @@
           const progressWrap = document.getElementById("progressWrap");
           const progressBar = document.getElementById("uploadProgress");
           progressWrap.style.display = "block";
-
           let uploaded = 0;
-          const baseRefPath = `pasien/${tahun}/${bulan}`;
           try {
             for (let i = 0; i < sanitized.length; i++) {
-              const newRef = push(ref(db, baseRefPath));
-              await set(newRef, sanitized[i]);
+              await set(
+                push(ref(db, `pasien/${tahun}/${bulan}`)),
+                sanitized[i]
+              );
               uploaded++;
               const pct = Math.round((uploaded / sanitized.length) * 100);
               progressBar.style.width = pct + "%";
               progressBar.textContent = pct + "%";
             }
             log(`Upload selesai: ${uploaded} baris`);
-            loadRekap(); // refresh tabel
+            loadRekap();
           } catch (err) {
             log("Error upload:", err.message || err);
           } finally {
-            setTimeout(() => {
-              progressWrap.style.display = "none";
-            }, 1200);
+            setTimeout(() => (progressWrap.style.display = "none"), 1200);
           }
         });
 
-      document.getElementById("clearLogBtn").addEventListener("click", () => {
-        logBox.textContent = "";
-      });
+      document
+        .getElementById("clearLogBtn")
+        .addEventListener("click", () => (logBox.textContent = ""));
+
+      function sanitizeKey(key) {
+        if (key == null) return null;
+        const trimmed = String(key).trim();
+        if (!trimmed) return null;
+        let k = trimmed.replace(/\s+/g, "_").replace(/\//g, "_");
+        k = k.replace(/[$#\[\]\.\/]/g, "");
+        return k === "" ? null : k;
+      }
+      function sanitizeRow(row) {
+        const newRow = {};
+        for (const rawKey in row) {
+          const newKey = sanitizeKey(rawKey);
+          if (!newKey) continue;
+          newRow[newKey] = row[rawKey];
+        }
+        return newRow;
+      }
 
       // -------------------------
-      // Rekap Data per Bulan
+      // Rekap Data Pasien (filter per tahun)
       // -------------------------
+      const tahunList = ["2023", "2024", "2025"];
       const bulanList = [
         "januari",
         "februari",
@@ -364,26 +323,17 @@
       async function loadRekap() {
         const tbody = document.getElementById("rekapBody");
         tbody.innerHTML = "";
-        const tahun = document.getElementById("tahunSelect").value || "2025";
-
+        const filterTahun = document.getElementById("filterTahun").value;
         for (const bulan of bulanList) {
-          const dbRef = ref(db, `pasien/${tahun}/${bulan}`);
-          const snapshot = await get(dbRef);
-
-          let jumlah = 0;
-          if (snapshot.exists()) {
-            jumlah = Object.keys(snapshot.val()).length;
-          }
-
+          const snapshot = await get(ref(db, `pasien/${filterTahun}/${bulan}`));
+          const jumlah = snapshot.exists()
+            ? Object.keys(snapshot.val()).length
+            : 0;
           const row = document.createElement("tr");
           row.innerHTML = `
             <td>${bulan.charAt(0).toUpperCase() + bulan.slice(1)}</td>
             <td>${jumlah}</td>
-            <td>
-              <button class="btn btn-sm btn-danger" onclick="hapusBulan('${tahun}','${bulan}')">
-                Hapus
-              </button>
-            </td>
+            <td><button class="btn btn-sm btn-danger" onclick="hapusBulan('${filterTahun}','${bulan}')">Hapus</button></td>
           `;
           tbody.appendChild(row);
         }
@@ -399,6 +349,10 @@
           alert("Gagal hapus: " + err.message);
         }
       };
+
+      document
+        .getElementById("filterTahun")
+        .addEventListener("change", loadRekap);
 
       loadRekap();
     </script>
