@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rekap Pasien</title>
+
+    <!-- Google Sign-In -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- Google Fonts -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      body {
+        margin: 0;
+        font-family: "Poppins", sans-serif;
+        color: #333;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #63aee0, #0d4c5f);
+        background-size: 200% 200%;
+        animation: gradientFlow 12s ease infinite;
+      }
+
+      @keyframes gradientFlow {
+        0% {
+          background-position: 0% 50%;
+        }
+        50% {
+          background-position: 100% 50%;
+        }
+        100% {
+          background-position: 0% 50%;
+        }
+      }
+
+      #loginDiv {
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 16px;
+        padding: 25px 20px;
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.15);
+        width: 90%;
+        max-width: 280px;
+        text-align: center;
+        backdrop-filter: blur(10px);
+        transition: transform 0.4s ease, opacity 0.4s ease;
+      }
+
+      #loginDiv.hide {
+        transform: scale(0.9);
+        opacity: 0;
+      }
+
+      #loginDiv img.logo-pkm {
+        width: 65px;
+        margin-bottom: 8px;
+      }
+
+      h3 {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 18px;
+        color: #4b6f2f;
+      }
+
+      .g-signin-container {
+        display: flex;
+        justify-content: center;
+        margin-top: 15px;
+      }
+
+      #content {
+        display: none;
+        width: 100vw;
+        height: 100vh;
+      }
+
+      iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+      }
+
+      #userInfo {
+        position: absolute;
+        top: 15px;
+        right: 20px;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 8px 14px;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        color: #333;
+        z-index: 999;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transition: transform 0.3s;
+      }
+
+      #userInfo:hover {
+        transform: translateY(-2px);
+      }
+
+      #logoutBtn {
+        background: #e53935;
+        color: #fff;
+        border: none;
+        padding: 5px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.8rem;
+        transition: 0.3s;
+      }
+
+      #logoutBtn:hover {
+        background: #c62828;
+      }
+
+      /* Responsive Google button */
+      .g_id_signin {
+        width: 100% !important;
+        max-width: 240px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Halaman Login -->
+    <div id="loginDiv">
+      <img
+        class="logo-pkm"
+        src="https://puskesmastrenggalek.github.io/SIP/assets/pkm.png"
+        alt="Logo Puskesmas"
+      />
+      <h3>Login Rekap Pasien</h3>
+
+      <div
+        id="g_id_onload"
+        data-client_id="159159886422-e3ccfmj01e46qc5rtmubk21fhe3ocjam.apps.googleusercontent.com"
+        data-callback="handleCredentialResponse"
+        data-auto_prompt="false"
+      ></div>
+      <div class="g-signin-container">
+        <div
+          class="g_id_signin"
+          data-type="standard"
+          data-shape="pill"
+          data-theme="outline"
+        ></div>
+      </div>
+    </div>
+
+    <!-- Halaman Konten -->
+    <div id="content">
+      <div id="userInfo">
+        <span id="userName"></span>
+        <button id="logoutBtn">Logout</button>
+      </div>
+      <iframe id="pageFrame" src=""></iframe>
+    </div>
+
+    <script>
+      const allowedEmails = [
+        "harapan.triple.x@gmail.com",
+        "pkmpkmtrenggalek@gmail.com",
+        "baaltazard89@gmail.com",
+        "marjiantomarjianto91@gmail.com",
+      ];
+
+      function decodeJwtResponse(token) {
+        const base64Url = token.split(".")[1];
+        const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+        return JSON.parse(decodeURIComponent(escape(window.atob(base64))));
+      }
+
+      function showContent(data) {
+        const loginDiv = document.getElementById("loginDiv");
+        loginDiv.classList.add("hide");
+        setTimeout(() => (loginDiv.style.display = "none"), 400);
+
+        document.getElementById("content").style.display = "block";
+        document.getElementById(
+          "userName"
+        ).innerHTML = `👋 Halo, <strong>${data.name}</strong><br/><small>${data.email}</small>`;
+        document.getElementById("pageFrame").src = "home.html";
+      }
+
+      function handleCredentialResponse(response) {
+        const data = decodeJwtResponse(response.credential);
+        const email = data.email;
+
+        if (!allowedEmails.includes(email)) {
+          Swal.fire({
+            icon: "error",
+            title: "Akses Ditolak",
+            text: "Email kamu tidak diizinkan.",
+            confirmButtonColor: "#d33",
+          });
+          return;
+        }
+
+        sessionStorage.setItem("userCredential", JSON.stringify(data));
+        showContent(data);
+
+        Swal.fire({
+          icon: "success",
+          title: "Login Berhasil",
+          text: `Selamat datang, ${data.name}!`,
+          timer: 1800,
+          showConfirmButton: false,
+        });
+      }
+
+      function logout() {
+        Swal.fire({
+          title: "Yakin mau logout?",
+          icon: "warning",
+          showCancelButton: true,
+          confirmButtonText: "Logout",
+          cancelButtonText: "Batal",
+          confirmButtonColor: "#e53935",
+        }).then((result) => {
+          if (result.isConfirmed) {
+            sessionStorage.removeItem("userCredential");
+            document.getElementById("content").style.display = "none";
+            document.getElementById("pageFrame").src = "";
+            document.getElementById("loginDiv").style.display = "block";
+            document.getElementById("loginDiv").classList.remove("hide");
+
+            Swal.fire({
+              icon: "success",
+              title: "Logout berhasil",
+              timer: 1200,
+              showConfirmButton: false,
+            });
+          }
+        });
+      }
+
+      function checkSession() {
+        const savedData = sessionStorage.getItem("userCredential");
+        if (savedData) {
+          const data = JSON.parse(savedData);
+          if (allowedEmails.includes(data.email)) {
+            showContent(data);
+          } else {
+            sessionStorage.removeItem("userCredential");
+          }
+        }
+      }
+
+      window.onload = checkSession;
+
+      window.addEventListener("DOMContentLoaded", () => {
+        const logoutBtn = document.getElementById("logoutBtn");
+        if (logoutBtn) logoutBtn.addEventListener("click", logout);
+      });
+    </script>
+  </body>
+</html>

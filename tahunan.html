@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rekap Kunjungan Pasien (Tahunan)</title>
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      background: linear-gradient(135deg, #f8f8f8, #99a3c2);
+      min-height: 100vh;
+    }
+    .card {
+      border-radius: 20px;
+      border: none;
+    }
+    .header-title {
+      background: linear-gradient(90deg, #175c06, #60812a);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: 800;
+    }
+    .form-select {
+      border-radius: 12px;
+    }
+    .table-responsive {
+      overflow-x: auto;
+    }
+    #tableHead th {
+      font-size: 0.8rem;
+      padding: 6px;
+      text-align: center;
+    }
+    #dataBody td {
+      font-size: 0.85rem;
+      padding: 6px;
+      text-align: center;
+    }
+    thead.table-dark th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    .shadow-soft {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+  </style>
+</head>
+<body>
+  <div class="container my-5">
+    <!-- <a href="register.html" class="btn btn-outline-danger btn-sm shadow mb-4 rounded">
+      ➕ Input Register Pasien
+    </a> -->
+    <a href="index.html" class="btn btn-outline-primary  shadow mb-4 rounded">
+        Rekap Register Pasien Bulanan
+    </a>
+
+    <div class="card shadow-soft p-4">
+      <h2 class="text-center mb-4 header-title fw-bold">
+        Rekap Kunjungan Pasien (Tahunan)
+      </h2>
+
+      <!-- Pilihan Tahun -->
+      <div class="row justify-content-center mb-4">
+        <div class="col-auto">
+          <div class="input-group shadow-sm">
+            <span class="input-group-text bg-light">📅 Tahun</span>
+            <select id="tahunSelect" class="form-select">
+              <option value="">-- Pilih Tahun --</option>
+              <option value="2023">2023</option>
+              <option value="2024">2024</option>
+              <option value="2025">2025</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading -->
+      <div id="loading" class="text-center my-3" style="display: none">
+        <div class="spinner-border text-success" role="status"></div>
+        <p class="mt-2 text-muted">⏳ Memuat data...</p>
+      </div>
+
+      <!-- Konten -->
+      <div id="content" style="display: none">
+        <div class="table-responsive shadow-sm rounded">
+          <table class="table table-sm table-bordered table-striped table-hover align-middle text-center">
+            <thead class="table-dark" id="tableHead"></thead>
+            <tbody id="dataBody"></tbody>
+          </table>
+        </div>
+
+        <!-- Chart -->
+        <div class="card shadow-soft mt-4">
+          <div class="card-body">
+            <h5 class="card-title fw-bold text-primary">
+              📈 Grafik Kunjungan Pasien (Tahunan)
+            </h5>
+            <canvas id="kunjunganChart" height="120"></canvas>
+          </div>
+        </div>
+
+        <!-- Diagnosa -->
+        <div class="card shadow-soft mt-4">
+          <div class="card-body">
+            <h5 class="card-title fw-bold text-primary">📋 Top 10 Diagnosa</h5>
+            <ul class="list-group list-group-flush" id="diagnosaList"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <footer class="text-center mt-4">
+      <small class="text-muted">PKM Trenggalek | <a href="register.html"> 2025</a></small>
+    </footer>
+  </div>
+
+  <!-- Script Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+
+    let chartInstance = null;
+
+    // 🔹 Config Firebase (isi sesuai punyamu)
+    const firebaseConfig = {
+      apiKey: "AIzaSyCrMmWyZOclX2ILNCmY6T9MBfNhRxaMGLU",
+      authDomain: "rekap-data-pasien.firebaseapp.com",
+      databaseURL: "https://rekap-data-pasien-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "rekap-data-pasien",
+      storageBucket: "rekap-data-pasien.firebasestorage.app",
+      messagingSenderId: "204017560449",
+      appId: "1:204017560449:web:534fd88744504074455680",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // 🔹 Daftar bulan
+    const bulanList = [
+      "januari","februari","maret","april","mei","juni",
+      "juli","agustus","september","oktober","november","desember"
+    ];
+
+    // 🔹 ICD mapping sederhana
+    const icdMapping = {
+      A09: "Diare & gastroenteritis",
+      J18: "Pneumonia",
+      I10: "Hipertensi esensial",
+      E11: "Diabetes melitus tipe 2",
+      B20: "HIV",
+      N39: "Infeksi saluran kemih",
+      J06: "ISPA akut",
+      R50: "Demam tidak spesifik",
+      K30: "Dispepsia",
+      M54: "Nyeri punggung",
+      J00: "Nasofaringitis akut",
+      R51: "Sakit kepala",
+      J02: "Faringitis akut",
+      Z48: "Perawatan pasca operasi",
+      J39: "Gangguan saluran napas atas",
+      Z23: "Kunjungan imunisasi",
+    };
+
+    // 🔹 Fungsi load data
+    async function loadData(tahun) {
+      try {
+        const loadingDiv = document.getElementById("loading");
+        const contentDiv = document.getElementById("content");
+        loadingDiv.style.display = "block";
+        contentDiv.style.display = "none";
+
+        const monthlyStats = {};
+        const diagnosaStats = {};
+        bulanList.forEach(b => { monthlyStats[b] = { total:0, bpjs:0, nonbpjs:0 }; });
+
+        const dbRef = ref(db, `pasien/${tahun}`);
+        const snapshot = await get(dbRef);
+
+        if (snapshot.exists()) {
+          const allData = snapshot.val();
+          console.log("Data Firebase:", allData);
+
+          bulanList.forEach(bulan => {
+            const keyNormal = bulan;
+            const keyAlt = bulan.charAt(0).toUpperCase() + bulan.slice(1); // antisipasi kapital
+
+            const dataBulan = allData[keyNormal]
+              ? Object.values(allData[keyNormal])
+              : (allData[keyAlt] ? Object.values(allData[keyAlt]) : []);
+
+            dataBulan.forEach(item => {
+              monthlyStats[bulan].total++;
+
+              const noBpjs = String(item["No_BPJS"] || item["No BPJS"] || item["no_bpjs"] || "").replace(/\D/g,"");
+              if (noBpjs) monthlyStats[bulan].bpjs++;
+              else monthlyStats[bulan].nonbpjs++;
+
+              for (let i=1; i<=5; i++){
+                const d = String(item[`Diagnosa${i}`] || "").trim().toUpperCase();
+                if (d && /^[A-Z]\d{1,3}[A-Z0-9]?$/.test(d)){
+                  diagnosaStats[d] = (diagnosaStats[d] || 0) + 1;
+                }
+              }
+            });
+          });
+        }
+
+        renderTable(monthlyStats);
+        renderChart(monthlyStats);
+        renderDiagnosa(diagnosaStats);
+
+        contentDiv.style.display = "block";
+      } catch(err) {
+        console.error("Firebase fetch error:", err);
+      } finally {
+        document.getElementById("loading").style.display = "none";
+      }
+    }
+
+    // 🔹 Render tabel
+    function renderTable(monthlyStats) {
+      const head = `
+        <tr>
+          <th>Bulan</th>
+          <th>Total</th>
+          <th>BPJS</th>
+          <th>Non BPJS</th>
+        </tr>`;
+      document.getElementById("tableHead").innerHTML = head;
+
+      let rows = "";
+      bulanList.forEach(b => {
+        rows += `
+          <tr>
+            <td class="fw-bold text-capitalize">${b}</td>
+            <td>${monthlyStats[b].total}</td>
+            <td>${monthlyStats[b].bpjs}</td>
+            <td>${monthlyStats[b].nonbpjs}</td>
+          </tr>`;
+      });
+      document.getElementById("dataBody").innerHTML = rows;
+    }
+
+    // 🔹 Render chart
+    function renderChart(monthlyStats) {
+      const ctx = document.getElementById("kunjunganChart").getContext("2d");
+      const labels = bulanList.map(b => b.charAt(0).toUpperCase()+b.slice(1));
+      const totals = bulanList.map(b => monthlyStats[b].total);
+
+      if (chartInstance) chartInstance.destroy();
+      chartInstance = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [{
+            label: "Total Kunjungan",
+            data: totals,
+            borderColor: "rgb(75, 192, 192)",
+            backgroundColor: "rgba(75, 192, 192, 0.3)",
+            fill: true,
+            tension: 0.2
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: true } }
+        }
+      });
+    }
+
+    // 🔹 Render diagnosa
+    function renderDiagnosa(diagnosaStats) {
+      const list = document.getElementById("diagnosaList");
+      list.innerHTML = "";
+
+      const sorted = Object.entries(diagnosaStats)
+        .sort((a,b) => b[1]-a[1])
+        .slice(0,10);
+
+      sorted.forEach(([kode,jumlah])=>{
+        const nama = icdMapping[kode] || "Diagnosa tidak diketahui";
+        const li = document.createElement("li");
+        li.className = "list-group-item d-flex justify-content-between align-items-center";
+        li.innerHTML = `<span><b>${kode}</b> - ${nama}</span><span class="badge bg-success rounded-pill">${jumlah}</span>`;
+        list.appendChild(li);
+      });
+    }
+
+    // 🔹 Event
+    document.getElementById("tahunSelect").addEventListener("change", (e)=>{
+      const tahun = e.target.value;
+      if (tahun) loadData(tahun);
+      else document.getElementById("content").style.display="none";
+    });
+  </script>
+</body>
+</html>
